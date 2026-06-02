@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adivinho de Palavras Cruzadas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6366f1;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none w-full max-w-xs px-4"></div>
+
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 px-4 py-3 sm:px-6 sm:py-4">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-gradient-to-tr from-indigo-600 to-fuchsia-600 rounded-xl shadow-lg shadow-indigo-500/20">
+                    <i data-lucide="sparkles" class="w-5 h-5 text-white animate-pulse"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-400 bg-clip-text text-transparent">
+                        Adivinho de Palavras Cruzadas
+                    </h1>
+                    <p class="text-[10px] sm:text-xs text-slate-400 font-medium">Decifrador inteligente local para lives</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <button onclick="resetApp()" class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all text-slate-200 w-full sm:w-auto">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                    Reiniciar Tudo
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto p-3 sm:p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+        
+        <section class="lg:col-span-5 flex flex-col gap-4 sm:gap-6">
+            
+            <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-xl relative overflow-hidden flex flex-col items-center">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <div class="w-full flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="flex items-center justify-center w-5 h-5 rounded-lg bg-indigo-500/20 text-indigo-400 text-[10px] font-bold">1</span>
+                        <h2 class="text-xs sm:text-sm font-bold text-slate-200">Roda de Letras Interativa</h2>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleWheelVisibility()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2 py-1 rounded-lg font-bold flex items-center gap-1 transition-all">
+                            <i data-lucide="eye-off" id="toggle-wheel-icon" class="w-3 h-3"></i>
+                            <span id="toggle-wheel-text">Minimizar</span>
+                        </button>
+                        <span id="letter-count-badge" class="bg-indigo-950/80 text-indigo-300 border border-indigo-800 text-[10px] px-2 py-0.5 rounded-full font-semibold">
+                            7 Letras
+                        </span>
+                    </div>
+                </div>
+
+                <div class="w-full mb-3">
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Configurar letras do círculo:</label>
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            id="circle-letters-input" 
+                            value="CORRIÇO" 
+                            placeholder="Introduza as letras (Ex: CORRIÇO)"
+                            oninput="updateCircleLetters(this.value)"
+                            class="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-3 py-2 text-center text-md sm:text-lg font-bold tracking-widest text-indigo-300 transition-all uppercase"
+                        />
+                    </div>
+                </div>
+
+                <div id="canvas-wrapper" class="relative bg-slate-950/80 rounded-2xl border border-slate-800/60 p-3 flex items-center justify-center w-full max-w-[270px] aspect-square shadow-inner transition-all duration-300 overflow-hidden">
+                    <canvas id="wheel-canvas" width="250" height="250" class="cursor-pointer touch-none"></canvas>
+                    
+                    <div class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-indigo-950/95 border border-indigo-800 rounded-full shadow-lg pointer-events-none transition-all duration-200 opacity-0 scale-90" id="current-drawn-word-container">
+                        <span id="current-drawn-word" class="text-xs font-black tracking-widest text-indigo-300"></span>
+                    </div>
+                </div>
+
+                <p id="canvas-help-text" class="text-[10px] text-slate-500 mt-2.5 text-center leading-relaxed">
+                    Arraste ligando as letras ou toque nelas. Para mover a página, arraste no fundo escuro fora da roda.
+                </p>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-xl flex flex-col flex-grow min-h-[220px]">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                        <i data-lucide="layers" class="w-3.5 h-3.5 text-fuchsia-400"></i>
+                        Todas as Combinações
+                    </h3>
+                    <button onclick="calculateAllAnagrams()" class="text-[10px] bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1">
+                        <i data-lucide="sparkles" class="w-3 h-3"></i>
+                        Decifrar Tudo
+                    </button>
+                </div>
+
+                <div id="anagrams-container" class="flex-grow overflow-y-auto max-h-[250px] sm:max-h-[300px] pr-1 space-y-2.5">
+                    <div class="flex flex-col items-center justify-center h-full text-center p-5 bg-slate-950/30 border border-dashed border-slate-800/80 rounded-2xl text-slate-500">
+                        <i data-lucide="help-circle" class="w-7 h-7 mb-1.5 text-slate-700"></i>
+                        <p class="text-[11px] leading-relaxed max-w-[200px]">
+                            Clique em "Decifrar Tudo" para descobrir todas as combinações que podem ser geradas.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="lg:col-span-7 flex flex-col gap-4 sm:gap-6">
+            
+            <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-xl flex flex-col flex-grow">
+                
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                          <span class="flex items-center justify-center w-5 h-5 rounded-lg bg-indigo-500/20 text-indigo-400 text-[10px] font-bold">2</span>
+                          <h2 class="text-sm font-bold text-slate-200">Grelha de Palavras Alvo</h2>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5">Preencha as letras conhecidas para filtrar as respostas de forma exata.</p>
+                    </div>
+
+                    <button onclick="addNewWordRow()" class="flex items-center justify-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-indigo-500/10 self-start sm:self-auto">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        Adicionar Palavra
+                    </button>
+                </div>
+
+                <div id="board-container" class="space-y-3 overflow-y-auto max-h-[500px] sm:max-h-[600px] pr-1 flex-grow">
+                    </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <div id="definition-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center z-50 p-4 opacity-0 pointer-events-none transition-all duration-200">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 max-w-sm w-full shadow-2xl relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800 hover:bg-slate-700 transition-all">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+            <div class="flex items-center gap-2 text-indigo-400 mb-2">
+                <i data-lucide="book-open" class="w-4 h-4"></i>
+                <span class="text-[10px] font-bold tracking-widest uppercase">Dicionário do Jogo</span>
+            </div>
+            <h3 id="modal-word-title" class="text-2xl font-black text-white tracking-wide border-b border-slate-800 pb-2 mb-3">WORD</h3>
+            <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800/80 mb-4">
+                <span class="text-xs font-extrabold text-slate-500 uppercase tracking-widest block mb-1">Definição:</span>
+                <p id="modal-word-definition" class="text-xs text-slate-300 leading-relaxed">Definição da palavra aqui...</p>
+            </div>
+            <div class="flex justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- VARIÁVEIS GLOBAIS ---
+        let circleLetters = "CORRIÇO";
+        let wheelVisible = true;
+        let dicionarioArray = [];
+        
+        let words = [
+            { id: "row-1", length: 4, pattern: ["", "", "", ""], suggestions: [], loading: false },
+            { id: "row-2", length: 5, pattern: ["", "", "", "", ""], suggestions: [], loading: false },
+            { id: "row-3", length: 6, pattern: ["", "", "", "", "", ""], suggestions: [], loading: false }
+        ];
+
+        // Variáveis do Canvas
+        let canvas, ctx;
+        let isDrawing = false;
+        let lastMousePos = null;
+        let selectedIndices = [];
+        let letterPositions = [];
+
+        window.onload = function() {
+            lucide.createIcons();
+            
+            // Inicializar Canvas
+            canvas = document.getElementById('wheel-canvas');
+            if (canvas) {
+                ctx = canvas.getContext('2d');
+                setupCanvas();
+            }
+
+            renderBoard();
+            drawWheel();
+            carregarDicionario(); 
+        };
+
+        // --- CARREGAR DICIONÁRIO TXT ---
+        function carregarDicionario() {
+            fetch('lexico.txt')
+                .then(resposta => {
+                    if (!resposta.ok) throw new Error("Falha ao carregar lexico.txt");
+                    return resposta.text();
+                })
+                .then(textoBruto => {
+                    dicionarioArray = textoBruto.split('\n').map(p => p.trim()).filter(p => p !== "");
+                    showToast(`Dicionário carregado: ${dicionarioArray.length} palavras.`, "success");
+                })
+                .catch(erro => {
+                    console.error(erro);
+                    showToast("Erro ao carregar dicionário. Verifique se lexico.txt está na mesma pasta.", "error");
+                });
+        }
+
+        // --- LÓGICA DE FORMAR PALAVRA ---
+        function podeFormarPalavra(palavra, letrasDisponiveis) {
+            let palavraNormalizada = palavra.toLowerCase().replace(/[^a-zçáàâãéèêíïóôõöúçñ]/g, '');
+            let letras = letrasDisponiveis.toLowerCase().split('');
+            
+            if (palavraNormalizada.length > letras.length || palavraNormalizada.length === 0) return false;
+
+            for (let char of palavraNormalizada) {
+                let charSemAcento = char.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                let index = letras.findIndex(l => l.normalize("NFD").replace(/[\u0300-\u036f]/g, "") === charSemAcento);
+                
+                if (index === -1) return false; 
+                letras.splice(index, 1);
+            }
+            return true;
+        }
+
+        // --- TOAST NOTIFICATIONS ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `flex items-center gap-2 px-3 py-2 rounded-xl shadow-2xl border transition-all duration-300 bg-slate-900 border-slate-800 text-[11px] font-semibold pointer-events-auto transform translate-y-2 opacity-0 animate-in fade-in slide-in-from-top-4 w-full`;
+            
+            let icon = 'info';
+            let colorClass = 'text-indigo-400';
+            if (type === 'success') { icon = 'check-circle'; colorClass = 'text-emerald-400'; }
+            else if (type === 'error') { icon = 'alert-triangle'; colorClass = 'text-rose-500'; }
+            else if (type === 'warning') { icon = 'alert-circle'; colorClass = 'text-amber-500'; }
+
+            toast.innerHTML = `
+                <i data-lucide="${icon}" class="w-3.5 h-3.5 ${colorClass}"></i>
+                <span class="text-slate-200 flex-1">${message}</span>
+            `;
+            container.appendChild(toast);
+            lucide.createIcons({ attrs: { class: 'w-3.5 h-3.5' } });
+
+            setTimeout(() => toast.classList.remove('opacity-0'), 50);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function toggleWheelVisibility() {
+            const wrapper = document.getElementById('canvas-wrapper');
+            const text = document.getElementById('toggle-wheel-text');
+            const icon = document.getElementById('toggle-wheel-icon');
+            const helpText = document.getElementById('canvas-help-text');
+
+            wheelVisible = !wheelVisible;
+
+            if (wheelVisible) {
+                wrapper.classList.remove('hidden');
+                helpText.classList.remove('hidden');
+                text.textContent = "Minimizar";
+                icon.setAttribute('data-lucide', 'eye-off');
+                drawWheel();
+            } else {
+                wrapper.classList.add('hidden');
+                helpText.classList.add('hidden');
+                text.textContent = "Mostrar Roda";
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        }
+
+        function updateCircleLetters(val) {
+            circleLetters = val.toUpperCase().replace(/[^A-ZÇ]/g, '');
+            document.getElementById('circle-letters-input').value = circleLetters;
+            document.getElementById('letter-count-badge').textContent = `${circleLetters.length} Letras`;
+            selectedIndices = [];
+            drawWheel();
+        }
+
+        // --- RENDERIZAR TABULEIRO ---
+        function renderBoard() {
+            const container = document.getElementById('board-container');
+            container.innerHTML = '';
+
+            words.forEach((word, wordIdx) => {
+                const row = document.createElement('div');
+                row.className = `bg-slate-950/65 p-3.5 sm:p-4 rounded-2xl border border-slate-800/80 hover:border-slate-700/80 transition-all`;
+                
+                let letterBlocksHtml = '';
+                for (let i = 0; i < word.length; i++) {
+                    const char = word.pattern[i] || '';
+                    letterBlocksHtml += `
+                        <div class="flex flex-col items-center">
+                            <input 
+                                type="text" 
+                                maxlength="1" 
+                                value="${char}" 
+                                oninput="updateLetterPattern('${word.id}', ${i}, this.value, this)"
+                                onkeydown="handleLetterBackspace(event, '${word.id}', ${i}, this)"
+                                class="w-9 h-9 sm:w-11 sm:h-11 bg-slate-900 border-2 ${char ? 'border-indigo-500 bg-indigo-950/20 text-indigo-300 font-extrabold' : 'border-slate-800 text-slate-400'} focus:border-indigo-500 focus:outline-none rounded-lg text-center text-md sm:text-lg font-black transition-all uppercase"
+                            />
+                            <span class="text-[8px] text-slate-600 mt-0.5">${i + 1}</span>
+                        </div>
+                    `;
+                }
+
+                let suggestionsHtml = '';
+                if (word.loading) {
+                    suggestionsHtml = `<span class="text-xs text-indigo-400/80 animate-pulse font-medium">Buscando no dicionário...</span>`;
+                } else if (word.suggestions && word.suggestions.length > 0) {
+                    suggestionsHtml = word.suggestions.map(s => `
+                        <button onclick="showWordDetails('${s.word}', '${s.definition}')" class="px-2 py-0.5 text-xs font-bold bg-indigo-950/40 hover:bg-indigo-950 text-indigo-300 hover:text-white rounded-lg border border-indigo-900/40 hover:border-indigo-700 transition-all">
+                            ${s.word.toUpperCase()}
+                        </button>
+                    `).join('');
+                } else {
+                    suggestionsHtml = `
+                        <div class="flex items-center gap-1 text-[10px] text-slate-500">
+                            <i data-lucide="info" class="w-3 h-3"></i>
+                            <span>Preencha letras e clique em "Decifrar"</span>
+                        </div>
+                    `;
+                }
+
+                row.innerHTML = `
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-xs font-extrabold text-slate-400 uppercase tracking-wide">Palavra #${wordIdx + 1}</span>
+                            <div class="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+                                <button onclick="changeWordLength('${word.id}', -1)" class="w-4 h-4 flex items-center justify-center text-xs font-black hover:bg-slate-800 text-slate-400 rounded">-</button>
+                                <span class="text-xs font-bold px-1.5 text-indigo-300">${word.length} letras</span>
+                                <button onclick="changeWordLength('${word.id}', 1)" class="w-4 h-4 flex items-center justify-center text-xs font-black hover:bg-slate-800 text-slate-400 rounded">+</button>
+                            </div>
+                        </div>
+                        <button onclick="removeWordRow('${word.id}')" class="p-1 bg-slate-900 hover:bg-rose-950 text-slate-500 hover:text-rose-400 rounded-lg border border-slate-800 transition-all">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-1 justify-start mb-3">
+                        ${letterBlocksHtml}
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-2 border-t border-slate-900 items-center">
+                        <div class="sm:col-span-3">
+                            <button onclick="solveWordLocal('${word.id}')" class="w-full flex items-center justify-center gap-1 px-2.5 py-1.5 bg-slate-900 hover:bg-indigo-950 border border-slate-800 hover:border-indigo-850 text-indigo-400 font-bold text-xs rounded-xl transition-all">
+                                <i data-lucide="search" class="w-3 h-3"></i>
+                                Decifrar
+                            </button>
+                        </div>
+                        <div class="sm:col-span-9 flex flex-wrap gap-1 min-h-[28px] items-center">
+                            ${suggestionsHtml}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            lucide.createIcons();
+        }
+
+        function changeWordLength(id, delta) {
+            const word = words.find(w => w.id === id);
+            if (!word) return;
+            const newLen = word.length + delta;
+            if (newLen < 2 || newLen > 12) return;
+            
+            word.length = newLen;
+            const nextPattern = Array(newLen).fill("");
+            for (let i = 0; i < Math.min(word.pattern.length, newLen); i++) {
+                nextPattern[i] = word.pattern[i];
+            }
+            word.pattern = nextPattern;
+            word.suggestions = [];
+            renderBoard();
+        }
+
+        function updateLetterPattern(wordId, index, value, inputEl) {
+            const word = words.find(w => w.id === wordId);
+            if (!word) return;
+            const char = value.toUpperCase().replace(/[^A-ZÇ]/g, '');
+            word.pattern[index] = char;
+            word.suggestions = [];
+
+            if (char) {
+                inputEl.classList.add('border-indigo-500', 'bg-indigo-950/20', 'text-indigo-300');
+                const nextInput = inputEl.parentElement.nextElementSibling?.querySelector('input');
+                if (nextInput) nextInput.focus();
+            } else {
+                inputEl.classList.remove('border-indigo-500', 'bg-indigo-950/20', 'text-indigo-300');
+            }
+        }
+
+        function handleLetterBackspace(e, wordId, index, inputEl) {
+            if (e.key === 'Backspace' && !inputEl.value) {
+                const word = words.find(w => w.id === wordId);
+                if (word && index > 0) {
+                    word.pattern[index - 1] = "";
+                    renderBoard();
+                    setTimeout(() => {
+                        const inputs = inputEl.parentElement.parentElement.querySelectorAll('input');
+                        if (inputs[index - 1]) inputs[index - 1].focus();
+                    }, 0);
+                }
+            }
+        }
+
+        function addNewWordRow() {
+            const newId = `row-${Date.now()}`;
+            words.push({ id: newId, length: 5, pattern: Array(5).fill(""), suggestions: [], loading: false });
+            renderBoard();
+            showToast("Nova palavra adicionada", "success");
+        }
+
+        function removeWordRow(id) {
+            if (words.length <= 1) {
+                showToast("Mantenha pelo menos uma palavra.", "warning");
+                return;
+            }
+            words = words.filter(w => w.id !== id);
+            renderBoard();
+        }
+
+        // --- RESOLVER PALAVRA LOCAL ---
+        function solveWordLocal(wordId) {
+            const word = words.find(w => w.id === wordId);
+            if (!word) return;
+
+            if (!circleLetters || circleLetters.length < 2) {
+                showToast("Adicione pelo menos 2 letras na roda.", "warning");
+                return;
+            }
+
+            if (dicionarioArray.length === 0) {
+                showToast("Aguarde o dicionário carregar...", "warning");
+                return;
+            }
+
+            word.loading = true;
+            renderBoard();
+
+            setTimeout(() => {
+                let palavrasFiltradas = dicionarioArray.filter(p => {
+                    if (p.length !== word.length) return false;
+                    
+                    for (let i = 0; i < word.length; i++) {
+                        if (word.pattern[i]) {
+                            let charDicionario = p[i].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                            let charPadrao = word.pattern[i].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+                            if (charDicionario !== charPadrao) return false;
+                        }
+                    }
+                    return podeFormarPalavra(p, circleLetters);
+                });
+
+                palavrasFiltradas = palavrasFiltradas.slice(0, 30);
+                word.suggestions = palavrasFiltradas.map(p => ({ word: p, definition: "Palavra do dicionário." }));
+                word.loading = false;
+                
+                if (word.suggestions.length === 0) showToast("Nenhuma palavra encontrada.", "info");
+                
+                renderBoard();
+            }, 100);
+        }
+
+        // --- RESOLVER TODOS OS ANAGRAMAS LOCAL ---
+        function calculateAllAnagrams() {
+            if (!circleLetters || circleLetters.length < 3) {
+                showToast("Precisa de pelo menos 3 letras na roda.", "warning");
+                return;
+            }
+
+            if (dicionarioArray.length === 0) {
+                showToast("Aguarde o dicionário carregar...", "warning");
+                return;
+            }
+
+            const container = document.getElementById('anagrams-container');
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full py-8 text-indigo-400">
+                    <i data-lucide="refresh-cw" class="w-6 h-6 animate-spin mb-1.5"></i>
+                    <p class="text-[10px] font-semibold">Procurando no dicionário...</p>
+                </div>
+            `;
+            lucide.createIcons();
+
+            setTimeout(() => {
+                const palavrasEncontradas = dicionarioArray.filter(p => {
+                    return p.length >= 3 && podeFormarPalavra(p, circleLetters);
+                });
+
+                if (palavrasEncontradas.length === 0) {
+                    container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Nenhum anagrama encontrado.</div>`;
+                    return;
+                }
+
+                const grouped = {};
+                palavrasEncontradas.forEach(palavra => {
+                    const len = palavra.length;
+                    if (!grouped[len]) grouped[len] = [];
+                    grouped[len].push({ word: palavra, definition: "Palavra válida do dicionário." });
+                });
+
+                container.innerHTML = '';
+                Object.keys(grouped).sort((a, b) => b - a).forEach(len => {
+                    const block = document.createElement('div');
+                    block.className = 'bg-slate-950/40 border border-slate-800/80 p-2.5 rounded-xl space-y-1.5';
+                    block.innerHTML = `
+                        <div class="flex justify-between items-center border-b border-slate-800/60 pb-1">
+                            <span class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">${len} Letras</span>
+                            <span class="text-[8px] bg-indigo-950 text-indigo-300 px-1 py-0.5 rounded-md font-bold">${grouped[len].length}</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1">
+                            ${grouped[len].map(item => `
+                                <button onclick="showWordDetails('${item.word}', '${item.definition}')" class="px-2 py-0.5 bg-slate-900 hover:bg-indigo-950 border border-slate-800 hover:border-indigo-800 text-slate-300 hover:text-white rounded text-[11px] font-medium transition-all">
+                                    ${item.word.toUpperCase()}
+                                </button>
+                            `).join('')}
+                        </div>
+                    `;
+                    container.appendChild(block);
+                });
+
+                showToast("Todos os anagramas decifrados!", "success");
+            }, 100);
+        }
+
+        function showWordDetails(word, definition) {
+            document.getElementById('modal-word-title').textContent = word.toUpperCase();
+            document.getElementById('modal-word-definition').textContent = definition || "Sem definição.";
+            document.getElementById('definition-modal').classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function closeModal() {
+            document.getElementById('definition-modal').classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function resetApp() {
+            circleLetters = "CORRIÇO";
+            document.getElementById('circle-letters-input').value = circleLetters;
+            document.getElementById('letter-count-badge').textContent = `${circleLetters.length} Letras`;
+            
+            words = [
+                { id: "row-1", length: 4, pattern: ["", "", "", ""], suggestions: [], loading: false },
+                { id: "row-2", length: 5, pattern: ["", "", "", "", ""], suggestions: [], loading: false },
+                { id: "row-3", length: 6, pattern: ["", "", "", "", "", ""], suggestions: [], loading: false }
+            ];
+            selectedIndices = [];
+            
+            document.getElementById('anagrams-container').innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-center p-6 bg-slate-950/30 border border-dashed border-slate-800/80 rounded-2xl text-slate-500">
+                    <i data-lucide="help-circle" class="w-8 h-8 mb-2 text-slate-700"></i>
+                    <p class="text-xs leading-relaxed max-w-[240px]">
+                        Clique em "Decifrar Tudo" para descobrir todas as combinações que podem ser geradas.
+                    </p>
+                </div>
+            `;
+            
+            renderBoard();
+            drawWheel();
+            showToast("Aplicação reiniciada.", "info");
+        }
+
+        // --- CÓDIGO DA RODA DE CANVAS INTERATIVO ---
+        function setupCanvas() {
+            if (!canvas) return;
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', drawAction);
+            window.addEventListener('mouseup', endDrawing);
+
+            canvas.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                const pos = getMousePos(touch);
+                const index = getLetterAtPos(pos);
+                
+                if (index !== -1) {
+                    if (e.cancelable) e.preventDefault();
+                    isDrawing = true;
+                    selectedIndices = [index];
+                    updateDrawnWordDisplay();
+                    drawWheel();
+                } else {
+                    isDrawing = false;
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (isDrawing) {
+                    if (e.cancelable) e.preventDefault();
+                    const touch = e.touches[0];
+                    drawAction(touch);
+                }
+            }, { passive: false });
+
+            window.addEventListener('touchend', (e) => {
+                if (isDrawing) endDrawing();
+            });
+        }
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.clientX || e.pageX;
+            const clientY = e.clientY || e.pageY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const pos = getMousePos(e);
+            lastMousePos = pos;
+            
+            const index = getLetterAtPos(pos);
+            if (index !== -1) {
+                selectedIndices = [index];
+                updateDrawnWordDisplay();
+            }
+            drawWheel();
+        }
+
+        function drawAction(e) {
+            if (!isDrawing) return;
+            const pos = getMousePos(e);
+            lastMousePos = pos;
+
+            const index = getLetterAtPos(pos);
+            if (index !== -1) {
+                if (!selectedIndices.includes(index)) {
+                    selectedIndices.push(index);
+                    updateDrawnWordDisplay();
+                } else if (selectedIndices.length > 1 && selectedIndices[selectedIndices.length - 2] === index) {
+                    selectedIndices.pop();
+                    updateDrawnWordDisplay();
+                }
+            }
+            drawWheel();
+        }
+
+        function endDrawing() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            if (selectedIndices.length > 0) {
+                const formedWord = selectedIndices.map(idx => circleLetters[idx]).join('');
+                
+                let applied = false;
+                for (let word of words) {
+                    if (word.length === formedWord.length) {
+                        word.pattern = formedWord.split('');
+                        renderBoard();
+                        showToast(`Palavra "${formedWord}" aplicada à grelha!`, "success");
+                        applied = true;
+                        break;
+                    }
+                }
+                if (!applied) showToast(`Palavra selecionada: ${formedWord}`, "info");
+            }
+            
+            selectedIndices = [];
+            updateDrawnWordDisplay();
+            drawWheel();
+        }
+
+        function getLetterAtPos(pos) {
+            const clickTolerance = 35; 
+            for (let i = 0; i < letterPositions.length; i++) {
+                const lp = letterPositions[i];
+                const dist = Math.hypot(pos.x - lp.x, pos.y - lp.y);
+                if (dist < clickTolerance) return i;
+            }
+            return -1;
+        }
+
+        function updateDrawnWordDisplay() {
+            const wordContainer = document.getElementById('current-drawn-word-container');
+            const wordText = document.getElementById('current-drawn-word');
+            
+            if (selectedIndices.length > 0) {
+                const formedWord = selectedIndices.map(idx => circleLetters[idx]).join('');
+                wordText.textContent = formedWord;
+                wordContainer.classList.remove('opacity-0', 'scale-90');
+            } else {
+                wordContainer.classList.add('opacity-0', 'scale-90');
+            }
+        }
+
+        function drawWheel() {
+            if (!wheelVisible || !ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = 80;
+            const numLetters = circleLetters.length;
+            
+            letterPositions = [];
+            for (let i = 0; i < numLetters; i++) {
+                const angle = (i * 2 * Math.PI / numLetters) - (Math.PI / 2);
+                letterPositions.push({
+                    x: centerX + radius * Math.cos(angle),
+                    y: centerY + radius * Math.sin(angle),
+                    letter: circleLetters[i]
+                });
+            }
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            if (selectedIndices.length > 0) {
+                ctx.beginPath();
+                ctx.moveTo(letterPositions[selectedIndices[0]].x, letterPositions[selectedIndices[0]].y);
+                for (let i = 1; i < selectedIndices.length; i++) {
+                    const lp = letterPositions[selectedIndices[i]];
+                    ctx.lineTo(lp.x, lp.y);
+                }
+                if (isDrawing && lastMousePos) {
+                    ctx.lineTo(lastMousePos.x, lastMousePos.y);
+                }
+                ctx.strokeStyle = '#6366f1';
+                ctx.shadowColor = '#6366f1';
+                ctx.shadowBlur = 10;
+                ctx.lineWidth = 5;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+                
+                ctx.shadowBlur = 0;
+            }
+
+            letterPositions.forEach((pos, idx) => {
+                const isSelected = selectedIndices.includes(idx);
+                
+                if (isSelected) {
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 18, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#6366f1';
+                    ctx.shadowColor = '#6366f1';
+                    ctx.shadowBlur = 10;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 18, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#1e1b4b';
+                    ctx.strokeStyle = '#312e81';
+                    ctx.lineWidth = 2;
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                ctx.fillStyle = isSelected ? '#ffffff' : '#e2e8f0';
+                ctx.font = 'bold 15px "Plus Jakarta Sans", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(pos.letter, pos.x, pos.y + 0.5);
+            });
+        }
+    </script>
+</body>
+</html>
