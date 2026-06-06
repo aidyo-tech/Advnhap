@@ -28,61 +28,89 @@
         }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white pb-20">
 
     <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none w-full max-w-xs px-4"></div>
 
-    <div class="w-full max-w-7xl mx-auto px-4 pt-4 sm:px-6 flex flex-wrap gap-2 justify-between items-center z-40">
-        <div class="flex items-center gap-2 bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-1.5 shadow-lg w-full sm:w-auto">
-            <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
-            <span class="text-[10px] font-bold text-slate-300">Conectado ao lexico.txt e Dicionário Aberto</span>
-        </div>
-        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <button onclick="resetApp()" class="flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-all text-slate-200 shadow-lg shrink-0 w-full sm:w-auto">
-                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-                Reiniciar Tabuleiro
+    <div class="sticky top-0 z-30 bg-slate-950/90 backdrop-blur-md border-b border-slate-900 pb-3 pt-3 px-4">
+        <div class="max-w-md mx-auto flex bg-slate-900/90 p-1 rounded-2xl border border-slate-800 shadow-xl">
+            <button id="btn-board" onclick="switchTab('board')" class="tab-btn flex-1 flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition-all bg-indigo-600 text-white">
+                <i data-lucide="grid" class="w-4 h-4"></i>
+                <span>Tabuleiro</span>
+            </button>
+            <button id="btn-wheel" onclick="switchTab('wheel')" class="tab-btn flex-1 flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition-all text-slate-400 hover:text-slate-200">
+                <i data-lucide="circle-dot" class="w-4 h-4"></i>
+                <span>Roda</span>
+            </button>
+            <button id="btn-anagrams" onclick="switchTab('anagrams')" class="tab-btn flex-1 flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition-all text-slate-400 hover:text-slate-200">
+                <i data-lucide="layers" class="w-4 h-4"></i>
+                <span>Combinações</span>
             </button>
         </div>
     </div>
 
-    <main class="flex-grow max-w-7xl w-full mx-auto p-3 sm:p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
-        
-        <section class="lg:col-span-5 flex flex-col gap-4 sm:gap-6">
-            
-            <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-xl relative overflow-hidden flex flex-col items-center">
+    <div class="w-full max-w-3xl mx-auto px-4 pt-3 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-1.5">
+            <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Dicionário lexico.txt Ativo</span>
+        </div>
+        <button onclick="resetApp()" class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-all text-slate-300">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            Reset Geral
+        </button>
+    </div>
+
+    <main class="flex-grow max-w-3xl w-full mx-auto p-4 flex flex-col gap-6">
+
+        <div id="tab-board" class="tab-content flex flex-col gap-4">
+            <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-xl flex flex-col">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-sm font-black text-slate-200 flex items-center gap-2">
+                            <span class="flex items-center justify-center w-5 h-5 rounded-lg bg-indigo-500/20 text-indigo-400 text-[10px] font-bold">1</span>
+                            Grelha de Palavras Alvo
+                        </h2>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Preencha as letras que já conhece para filtrar as respostas por completo.</p>
+                    </div>
+
+                    <button onclick="addNewWordRow()" class="flex items-center justify-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        Adicionar Palavra
+                    </button>
+                </div>
+
+                <div id="board-container" class="space-y-4">
+                    </div>
+            </div>
+        </div>
+
+        <div id="tab-wheel" class="tab-content hidden flex flex-col gap-4 items-center">
+            <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-5 shadow-xl w-full max-w-md flex flex-col items-center relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                
-                <div class="w-full flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-2">
-                        <span class="flex items-center justify-center w-5 h-5 rounded-lg bg-indigo-500/20 text-indigo-400 text-[10px] font-bold">1</span>
-                        <h2 class="text-xs sm:text-sm font-bold text-slate-200">Roda de Letras Interativa</h2>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="toggleWheelVisibility()" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2 py-1 rounded-lg font-bold flex items-center gap-1 transition-all">
-                            <i data-lucide="eye-off" id="toggle-wheel-icon" class="w-3 h-3"></i>
-                            <span id="toggle-wheel-text">Minimizar</span>
-                        </button>
-                        <span id="letter-count-badge" class="bg-indigo-950/80 text-indigo-300 border border-indigo-800 text-[10px] px-2 py-0.5 rounded-full font-semibold">
-                            7 Letras
-                        </span>
-                    </div>
+
+                <div class="w-full flex items-center justify-between mb-4 border-b border-slate-800/60 pb-3">
+                    <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                        <span class="flex items-center justify-center w-5 h-5 rounded-lg bg-indigo-500/20 text-indigo-400 text-[10px] font-bold">2</span>
+                        Letras da Roda
+                    </h2>
+                    <span id="letter-count-badge" class="bg-indigo-950/80 text-indigo-300 border border-indigo-800 text-[10px] px-2.5 py-0.5 rounded-full font-bold">
+                        0 Letras
+                    </span>
                 </div>
 
-                <div class="w-full mb-3">
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Configurar letras do círculo:</label>
-                    <div class="relative">
-                        <input 
-                            type="text" 
-                            id="circle-letters-input" 
-                            value="CORRIÇO" 
-                            placeholder="Introduza as letras (Ex: CORRIÇO)"
-                            oninput="updateCircleLetters(this.value)"
-                            class="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-3 py-2 text-center text-md sm:text-lg font-bold tracking-widest text-indigo-300 transition-all uppercase"
-                        />
-                    </div>
+                <div class="w-full mb-4">
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Insira as letras da roda do jogo:</label>
+                    <input 
+                        type="text" 
+                        id="circle-letters-input" 
+                        value="" 
+                        placeholder="Clique para digitar (ex: COLO)"
+                        oninput="updateCircleLetters(this.value)"
+                        class="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-center text-md sm:text-lg font-black tracking-widest text-indigo-300 transition-all uppercase placeholder-slate-600"
+                    />
                 </div>
 
-                <div id="canvas-wrapper" class="relative bg-slate-950/80 rounded-2xl border border-slate-800/60 p-3 flex items-center justify-center w-full max-w-[270px] aspect-square shadow-inner transition-all duration-300 overflow-hidden">
+                <div class="relative bg-slate-950/80 rounded-2xl border border-slate-800/60 p-3 flex items-center justify-center w-full max-w-[270px] aspect-square shadow-inner">
                     <canvas id="wheel-canvas" width="250" height="250" class="cursor-pointer touch-none"></canvas>
                     
                     <div class="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-indigo-950/95 border border-indigo-800 rounded-full shadow-lg pointer-events-none transition-all duration-200 opacity-0 scale-90" id="current-drawn-word-container">
@@ -90,60 +118,35 @@
                     </div>
                 </div>
 
-                <p id="canvas-help-text" class="text-[10px] text-slate-500 mt-2.5 text-center leading-relaxed">
-                    Arraste ligando as letras ou toque nelas. Para mover a página, arraste no fundo escuro fora da roda.
+                <p class="text-[10px] text-slate-500 mt-4 text-center leading-relaxed max-w-xs">
+                    Arraste ligando as letras. Quando soltar, a palavra é enviada para a primeira linha compatível no tabuleiro!
                 </p>
             </div>
+        </div>
 
-            <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-xl flex flex-col flex-grow min-h-[220px]">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                        <i data-lucide="layers" class="w-3.5 h-3.5 text-fuchsia-400"></i>
-                        Todas as Combinações
+        <div id="tab-anagrams" class="tab-content hidden flex flex-col gap-4">
+            <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-5 shadow-xl flex flex-col min-h-[300px]">
+                <div class="flex items-center justify-between mb-4 border-b border-slate-800/60 pb-3">
+                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-1.5">
+                        <i data-lucide="layers" class="w-4 h-4 text-fuchsia-400"></i>
+                        Todas as Combinações Geráveis
                     </h3>
-                    <button onclick="calculateAllAnagrams()" class="text-[10px] bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1">
+                    <button onclick="calculateAllAnagrams()" class="text-[10px] bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 shadow-sm shadow-indigo-500/10">
                         <i data-lucide="sparkles" class="w-3 h-3"></i>
                         Decifrar Tudo
                     </button>
                 </div>
 
-                <div id="anagrams-container" class="flex-grow overflow-y-auto max-h-[250px] sm:max-h-[300px] pr-1 space-y-2.5">
-                    <div class="flex flex-col items-center justify-center h-full text-center p-5 bg-slate-950/30 border border-dashed border-slate-800/80 rounded-2xl text-slate-500">
-                        <i data-lucide="help-circle" class="w-7 h-7 mb-1.5 text-slate-700"></i>
-                        <p class="text-[11px] leading-relaxed max-w-[200px]">
-                            Clique em "Decifrar Tudo" para descobrir todas as combinações que podem ser geradas.
+                <div id="anagrams-container" class="space-y-3">
+                    <div class="flex flex-col items-center justify-center py-12 text-center bg-slate-950/30 border border-dashed border-slate-800/80 rounded-2xl text-slate-500">
+                        <i data-lucide="help-circle" class="w-8 h-8 mb-2 text-slate-700"></i>
+                        <p class="text-xs leading-relaxed max-w-[220px]">
+                            Clique no botão "Decifrar Tudo" no topo para analisar todas as palavras do dicionário que cabem na sua roda.
                         </p>
                     </div>
                 </div>
             </div>
-
-        </section>
-
-        <section class="lg:col-span-7 flex flex-col gap-4 sm:gap-6">
-            
-            <div class="bg-slate-900 border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-xl flex flex-col flex-grow">
-                
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                    <div>
-                        <div class="flex items-center gap-2">
-                          <span class="flex items-center justify-center w-5 h-5 rounded-lg bg-indigo-500/20 text-indigo-400 text-[10px] font-bold">2</span>
-                          <h2 class="text-sm font-bold text-slate-200">Grelha de Palavras Alvo</h2>
-                        </div>
-                        <p class="text-[10px] text-slate-400 mt-0.5">Preencha as letras conhecidas para filtrar as respostas de forma exata.</p>
-                    </div>
-
-                    <button onclick="addNewWordRow()" class="flex items-center justify-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-indigo-500/10 self-start sm:self-auto">
-                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                        Adicionar Palavra
-                    </button>
-                </div>
-
-                <div id="board-container" class="space-y-3 overflow-y-auto max-h-[500px] sm:max-h-[600px] pr-1 flex-grow">
-                    </div>
-
-            </div>
-
-        </section>
+        </div>
 
     </main>
 
@@ -154,40 +157,38 @@
             </button>
             <div class="flex items-center gap-2 text-indigo-400 mb-2">
                 <i data-lucide="book-open" class="w-4 h-4"></i>
-                <span class="text-[10px] font-bold tracking-widest uppercase">Dicionário do Jogo</span>
+                <span class="text-[10px] font-bold tracking-widest uppercase">Dicionário Ativo</span>
             </div>
-            <h3 id="modal-word-title" class="text-2xl font-black text-white tracking-wide border-b border-slate-800 pb-2 mb-3">WORD</h3>
+            <h3 id="modal-word-title" class="text-2xl font-black text-white tracking-wide border-b border-slate-800 pb-2 mb-3">PALAVRA</h3>
             <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800/80 mb-4">
-                <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block mb-1">Definição:</span>
-                <p id="modal-word-definition" class="text-xs text-slate-300 leading-relaxed">Definição da palavra aqui...</p>
+                <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block mb-1">Significado:</span>
+                <p id="modal-word-definition" class="text-xs text-slate-300 leading-relaxed">Definição detalhada carregando...</p>
             </div>
             <div class="flex justify-end">
                 <button onclick="closeModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all">
-                    Fechar
+                    Entendido
                 </button>
             </div>
         </div>
     </div>
 
-    <footer class="border-t border-slate-900 bg-slate-950 py-3 px-4 text-center text-[10px] text-slate-600">
-        Adivinho de Palavras Cruzadas &copy; 2026 • Motor Interno com base de dados "lexico.txt" & Dicionário Aberto.
-    </footer>
-
     <script>
-        // Variáveis Principais
-        let circleLetters = "CORRIÇO";
+        let activeTab = "board";
         let wheelVisible = true;
+
+        // Letras ativas no círculo de forma vazia por padrão
+        let circleLetters = "";
         
+        // Estrutura do Tabuleiro iniciada com 3 palavras limpas de tamanhos 4, 5 e 6
         let words = [
             { id: "row-1", length: 4, pattern: ["", "", "", ""], suggestions: [], loading: false },
             { id: "row-2", length: 5, pattern: ["", "", "", "", ""], suggestions: [], loading: false },
             { id: "row-3", length: 6, pattern: ["", "", "", "", "", ""], suggestions: [], loading: false }
         ];
 
-        // Banco de palavras global que será alimentado pelo lexico.txt
+        // Banco de palavras global carregado via lexico.txt
         let globalWordsList = [];
 
-        // Estado do Canvas da Roda
         const canvas = document.getElementById('wheel-canvas');
         const ctx = canvas.getContext('2d');
         let selectedIndices = [];
@@ -200,36 +201,36 @@
             renderBoard();
             setupCanvas();
             drawWheel();
-            await loadLexicon(); // Carrega o ficheiro assim que o site abre
+            await loadLexicon(); // Carrega as palavras do lexico.txt ao abrir a página
         };
 
-        // Função para carregar e ler o lexico.txt
+        // Função assíncrona para ler o ficheiro lexico.txt hospedado junto com o index.html
         async function loadLexicon() {
             try {
-                showToast("A carregar dicionário de palavras...", "info");
+                showToast("Carregando base de dados lexico.txt...", "info");
                 const response = await fetch('lexico.txt');
                 
-                if (!response.ok) throw new Error("Ficheiro lexico.txt não encontrado no servidor.");
+                if (!response.ok) throw new Error("Não foi possível encontrar o arquivo lexico.txt.");
                 
                 const text = await response.text();
                 
-                // Processa o arquivo separando por quebra de linha
+                // Quebra o texto por linha, limpa espaços e ignora linhas em branco
                 globalWordsList = text.split('\n')
                     .map(w => w.trim().toUpperCase())
-                    .filter(w => w.length > 1); // Remove linhas em branco ou de uma só letra
+                    .filter(w => w.length > 1);
                     
-                showToast(`Dicionário carregado com sucesso (${globalWordsList.length} palavras)!`, "success");
+                showToast(`Sucesso! ${globalWordsList.length} palavras carregadas.`, "success");
             } catch (error) {
-                console.error("Erro ao carregar lexico.txt:", error);
-                showToast("Erro: O ficheiro lexico.txt não foi encontrado. Certifique-se de que ele está no GitHub.", "error");
+                console.error(error);
+                showToast("Aviso: lexico.txt não detectado. Certifique-se de colocá-lo no repositório.", "error");
             }
         }
 
-        // Notificações personalizadas elegantes (Toast)
+        // Mostrar Notificação Toast
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            toast.className = `flex items-center gap-2 px-3 py-2 rounded-xl shadow-2xl border transition-all duration-300 bg-slate-900 border-slate-800 text-[11px] font-semibold pointer-events-auto transform translate-y-2 opacity-0 animate-in fade-in slide-in-from-top-4 w-full`;
+            toast.className = `flex items-center gap-2 px-3 py-2.5 rounded-xl shadow-2xl border transition-all duration-300 bg-slate-900 border-slate-800 text-[11px] font-semibold pointer-events-auto transform translate-y-2 opacity-0 animate-in fade-in slide-in-from-top-4 w-full`;
             
             let icon = 'info';
             let colorClass = 'text-indigo-400';
@@ -244,36 +245,30 @@
             container.appendChild(toast);
             lucide.createIcons({ attrs: { class: 'w-3.5 h-3.5' } });
 
-            setTimeout(() => { toast.classList.remove('opacity-0'); }, 50);
+            setTimeout(() => toast.classList.remove('opacity-0'), 50);
             setTimeout(() => {
                 toast.classList.add('opacity-0');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
 
-        function toggleWheelVisibility() {
-            const wrapper = document.getElementById('canvas-wrapper');
-            const text = document.getElementById('toggle-wheel-text');
-            const icon = document.getElementById('toggle-wheel-icon');
-            const helpText = document.getElementById('canvas-help-text');
+        // Alternar abas rapidamente
+        function switchTab(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
 
-            wheelVisible = !wheelVisible;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn flex-1 flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition-all text-slate-400 hover:text-slate-200";
+            });
+            document.getElementById(`btn-${tabId}`).className = "tab-btn flex-1 flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-extrabold transition-all bg-indigo-600 text-white";
 
-            if (wheelVisible) {
-                wrapper.classList.remove('hidden');
-                helpText.classList.remove('hidden');
-                text.textContent = "Minimizar";
-                icon.setAttribute('data-lucide', 'eye-off');
-                drawWheel();
-            } else {
-                wrapper.classList.add('hidden');
-                helpText.classList.add('hidden');
-                text.textContent = "Mostrar Roda";
-                icon.setAttribute('data-lucide', 'eye');
+            if (tabId === 'wheel') {
+                setTimeout(() => drawWheel(), 30);
             }
-            lucide.createIcons();
         }
 
+        // Atualizar as Letras da Roda
         function updateCircleLetters(val) {
             circleLetters = val.toUpperCase().replace(/[^A-ZÇ]/g, '');
             document.getElementById('circle-letters-input').value = circleLetters;
@@ -282,6 +277,17 @@
             drawWheel();
         }
 
+        // Limpar todas as letras de uma palavra específica
+        function clearWordPattern(id) {
+            const word = words.find(w => w.id === id);
+            if (!word) return;
+            word.pattern = Array(word.length).fill("");
+            word.suggestions = [];
+            renderBoard();
+            showToast("Grelha da palavra limpa!", "success");
+        }
+
+        // Renderizar Grelha do Tabuleiro
         function renderBoard() {
             const container = document.getElementById('board-container');
             container.innerHTML = '';
@@ -311,12 +317,12 @@
 
                 let suggestionsHtml = '';
                 if (word.loading) {
-                    suggestionsHtml = `<span class="text-2xs text-indigo-400/80 animate-pulse font-medium">A analisar o lexico.txt e buscar na API...</span>`;
+                    suggestionsHtml = `<span class="text-2xs text-indigo-400/80 animate-pulse font-medium">Processando lexico.txt & API...</span>`;
                 } else if (word.suggestions && word.suggestions.length > 0) {
                     suggestionsHtml = word.suggestions.map(s => {
                         const defSafe = s.definition.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                         return `
-                        <button onclick="showWordDetails('${s.word}', '${defSafe}')" class="px-2.5 py-1 text-3xs sm:text-xs font-bold bg-indigo-950/40 hover:bg-indigo-950 text-indigo-300 hover:text-white rounded-lg border border-indigo-900/40 hover:border-indigo-700 transition-all animate-fade-in">
+                        <button onclick="showWordDetails('${s.word}', '${defSafe}')" class="px-2.5 py-1 text-3xs sm:text-xs font-bold bg-indigo-950/40 hover:bg-indigo-950 text-indigo-300 hover:text-white rounded-lg border border-indigo-900/40 hover:border-indigo-700 transition-all">
                             ${s.word}
                         </button>
                     `}).join('');
@@ -324,7 +330,7 @@
                     suggestionsHtml = `
                         <div class="flex items-center gap-1 text-[10px] text-slate-500">
                             <i data-lucide="info" class="w-3 h-3"></i>
-                            <span>Preencha letras e clique em "Decifrar"</span>
+                            <span>Preencha e clique em "Decifrar"</span>
                         </div>
                     `;
                 }
@@ -339,16 +345,24 @@
                                 <button onclick="changeWordLength('${word.id}', 1)" class="w-4 h-4 flex items-center justify-center text-3xs font-black hover:bg-slate-800 text-slate-400 rounded">+</button>
                             </div>
                         </div>
-                        <button onclick="removeWordRow('${word.id}')" class="p-1 bg-slate-900 hover:bg-rose-950 text-slate-500 hover:text-rose-400 rounded-lg border border-slate-800 transition-all">
-                            <i data-lucide="trash-2" class="w-3 h-3"></i>
-                        </button>
+
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="clearWordPattern('${word.id}')" class="p-1 bg-slate-900 hover:bg-slate-800 text-amber-500 hover:text-amber-400 rounded-lg border border-slate-800 transition-all" title="Limpar letras">
+                                <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button onclick="removeWordRow('${word.id}')" class="p-1 bg-slate-900 hover:bg-rose-950 text-slate-500 hover:text-rose-400 rounded-lg border border-slate-800 transition-all" title="Eliminar palavra">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
                     </div>
+
                     <div class="flex flex-wrap gap-1 justify-start mb-3">
                         ${letterBlocksHtml}
                     </div>
+
                     <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-2 border-t border-slate-900 items-center">
                         <div class="sm:col-span-3">
-                            <button onclick="solveWordWithIA('${word.id}')" class="w-full flex items-center justify-center gap-1 px-2.5 py-1.5 bg-indigo-600/10 hover:bg-indigo-600 hover:text-white border border-indigo-500/20 text-indigo-400 font-bold text-xs rounded-xl transition-all">
+                            <button onclick="solveWordWithIA('${word.id}')" class="w-full flex items-center justify-center gap-1 px-2.5 py-1.5 bg-slate-900 hover:bg-indigo-950 border border-slate-800 hover:border-indigo-850 text-indigo-400 font-bold text-xs rounded-xl transition-all">
                                 <i data-lucide="search" class="w-3 h-3"></i>
                                 Decifrar
                             </button>
@@ -360,6 +374,7 @@
                 `;
                 container.appendChild(row);
             });
+
             lucide.createIcons();
         }
 
@@ -413,19 +428,19 @@
             const newId = `row-${Date.now()}`;
             words.push({ id: newId, length: 5, pattern: Array(5).fill(""), suggestions: [], loading: false });
             renderBoard();
-            showToast("Nova palavra adicionada ao tabuleiro", "success");
+            showToast("Nova linha criada!", "success");
         }
 
         function removeWordRow(id) {
             if (words.length <= 1) {
-                showToast("Deve manter pelo menos uma palavra no tabuleiro.", "warning");
+                showToast("Mantenha ao menos uma palavra no tabuleiro.", "warning");
                 return;
             }
             words = words.filter(w => w.id !== id);
             renderBoard();
         }
 
-        // Função limpadora de definições da API do Dicionário Aberto
+        // Função utilitária para higienizar a tag <def> que vem dentro do XML da API
         function cleanXmlDefinition(xmlTexto) {
             let definicao = "Significado não encontrado.";
             const matchDef = xmlTexto.match(/<def>([\s\S]*?)<\/def>/);
@@ -439,35 +454,32 @@
             return definicao.replace(/\s+/g, ' ').trim();
         }
 
-        // Decifrar palavras usando lexico.txt + Dicionário Aberto
+        // Decifrar palavras individuais consultando o lexico.txt e validando na API do Dicionário Aberto
         async function solveWordWithIA(wordId) {
             const word = words.find(w => w.id === wordId);
             if (!word) return;
 
             if (!circleLetters || circleLetters.length < 2) {
-                showToast("Por favor, adicione pelo menos 2 letras na roda primeiro.", "warning");
+                showToast("Por favor, adicione as letras na aba 'Roda' primeiro.", "warning");
                 return;
             }
 
             if (globalWordsList.length === 0) {
-                showToast("O ficheiro lexico.txt ainda não foi carregado.", "error");
+                showToast("Aguarde a base de dados terminar de carregar.", "error");
                 return;
             }
 
             word.loading = true;
             renderBoard();
 
-            // Filtragem no motor local usando globalWordsList
+            // Filtra no banco de dados gigante respeitando o tamanho, quadradinhos e as letras da roda
             const possíveisPalavras = globalWordsList.filter(w => {
-                // Tamanho correto?
                 if (w.length !== word.length) return false;
                 
-                // Bate com as letras já digitadas no tabuleiro?
                 for (let i = 0; i < word.length; i++) {
                     if (word.pattern[i] && w[i] !== word.pattern[i]) return false;
                 }
 
-                // É formada SOMENTE com as letras disponíveis no círculo?
                 let letrasDisponiveis = circleLetters.split('');
                 for (let i = 0; i < w.length; i++) {
                     const letra = w[i];
@@ -475,18 +487,19 @@
                     if (index === -1) return false; 
                     letrasDisponiveis.splice(index, 1);
                 }
-
                 return true;
             });
 
             word.suggestions = [];
 
-            // Buscar significados reais na API
-            for (const termo of possíveisPalavras) {
+            // Limita a busca a no máximo 15 sugestões simultâneas para não sobrecarregar a API na live
+            const limitadas = possíveisPalavras.slice(0, 15);
+
+            for (const termo of limitadas) {
                 try {
                     const url = `https://api.dicionario-aberto.net/v2/word/${termo.toLowerCase()}`;
                     const response = await fetch(url);
-                    let definicao = "Definição indisponível offline.";
+                    let definicao = "Definição não localizada na API online.";
                     
                     if (response.ok) {
                         const data = await response.json();
@@ -496,28 +509,28 @@
                     }
                     word.suggestions.push({ word: termo, definition: definicao });
                 } catch (err) {
-                    console.error("Erro na API:", err);
-                    word.suggestions.push({ word: termo, definition: "Erro de rede ao buscar significado." });
+                    console.error(err);
+                    word.suggestions.push({ word: termo, definition: "Erro ao conectar com o dicionário remoto." });
                 }
             }
 
             if (word.suggestions.length === 0) {
-                showToast("Nenhuma palavra correspondente encontrada no lexico.txt.", "info");
+                showToast("Nenhuma palavra correspondente encontrada.", "info");
             }
 
             word.loading = false;
             renderBoard();
         }
 
-        // Calcular todas as palavras geradas pelo círculo (Anagramas)
+        // Descobrir todas as combinações totais (Anagramas) baseadas estritamente no lexico.txt
         async function calculateAllAnagrams() {
             if (!circleLetters || circleLetters.length < 3) {
-                showToast("Precisa de pelo menos 3 letras na roda.", "warning");
+                showToast("Digite pelo menos 3 letras na aba 'Roda'.", "warning");
                 return;
             }
 
             if (globalWordsList.length === 0) {
-                showToast("O ficheiro lexico.txt ainda não foi carregado.", "error");
+                showToast("O dicionário de palavras está indisponível ou carregando.", "error");
                 return;
             }
 
@@ -525,12 +538,11 @@
             container.innerHTML = `
                 <div class="flex flex-col items-center justify-center h-full py-8 text-indigo-400">
                     <i data-lucide="refresh-cw" class="w-6 h-6 animate-spin mb-1.5"></i>
-                    <p class="text-[10px] font-semibold">A buscar no lexico e carregar definições...</p>
+                    <p class="text-[10px] font-semibold">Analisando combinações no lexico.txt...</p>
                 </div>
             `;
             lucide.createIcons();
 
-            // Procura anagramas no arquivo local gigante
             const arrayLetrasRoda = circleLetters.split('');
             const palavrasValidas = globalWordsList.filter(palavra => {
                 if (palavra.length < 3 || palavra.length > arrayLetrasRoda.length) return false;
@@ -545,34 +557,20 @@
             });
 
             if (palavrasValidas.length === 0) {
-                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Nenhum anagrama encontrado no seu lexico.txt.</div>`;
+                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Nenhuma combinação encontrada na roda.</div>`;
                 return;
             }
 
-            const listaFinalResultados = [];
-
-            // Puxar definições
-            for (const termo of palavrasValidas) {
-                try {
-                    const url = `https://api.dicionario-aberto.net/v2/word/${termo.toLowerCase()}`;
-                    const response = await fetch(url);
-                    let definicao = "Definição indisponível offline.";
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data && data.length > 0 && data[0].xml) {
-                            definicao = cleanXmlDefinition(data[0].xml);
-                        }
-                    }
-                    listaFinalResultados.push({ word: termo, definition: definicao });
-                } catch (e) {
-                    listaFinalResultados.push({ word: termo, definition: "Erro de rede ao buscar significado." });
-                }
-            }
+            // Otimização para as abas: exibe de forma instantânea sem puxar definição em lote (evita travamentos)
+            const listaFinalResultados = palavrasValidas.map(termo => ({
+                word: termo,
+                definition: "Clique para buscar o significado em tempo real."
+            }));
 
             renderAnagrams(listaFinalResultados);
         }
 
+        // Renderiza os blocos de anagramas de forma veloz organizando por tamanho
         function renderAnagrams(wordsList) {
             const container = document.getElementById('anagrams-container');
             const grouped = {};
@@ -585,31 +583,49 @@
             container.innerHTML = '';
             Object.keys(grouped).sort((a, b) => b - a).forEach(len => {
                 const block = document.createElement('div');
-                block.className = 'bg-slate-950/40 border border-slate-800/80 p-2.5 rounded-xl space-y-1.5 animate-fade-in';
+                block.className = 'bg-slate-950/40 border border-slate-800/80 p-2.5 rounded-xl space-y-1.5';
                 block.innerHTML = `
                     <div class="flex justify-between items-center border-b border-slate-800/60 pb-1">
                         <span class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">${len} Letras</span>
                         <span class="text-[8px] bg-indigo-950 text-indigo-300 px-1.5 py-0.5 rounded-md font-bold">${grouped[len].length}</span>
                     </div>
                     <div class="flex flex-wrap gap-1">
-                        ${grouped[len].map(item => {
-                            const defSafe = item.definition.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                            return `
-                            <button onclick="showWordDetails('${item.word}', '${defSafe}')" class="px-2 py-0.5 bg-slate-900 hover:bg-indigo-950 border border-slate-800 hover:border-indigo-800 text-slate-300 hover:text-white rounded text-[11px] font-medium transition-all">
+                        ${grouped[len].map(item => `
+                            <button onclick="fetchSingleWordDefinition('${item.word}')" class="px-2 py-0.5 bg-slate-900 hover:bg-indigo-950 border border-slate-800 hover:border-indigo-800 text-slate-300 hover:text-white rounded text-[11px] font-medium transition-all">
                                 ${item.word}
                             </button>
-                        `}).join('')}
+                        `).join('')}
                     </div>
                 `;
                 container.appendChild(block);
             });
 
-            showToast("Anagramas e combinações listadas!", "success");
+            showToast("Combinações listadas com sucesso!", "success");
+        }
+
+        // Função complementar: Busca a definição sob demanda apenas quando clica no botão do Anagrama
+        async function fetchSingleWordDefinition(termo) {
+            showWordDetails(termo, "Buscando verbete oficial no Dicionário Aberto...");
+            try {
+                const url = `https://api.dicionario-aberto.net/v2/word/${termo.toLowerCase()}`;
+                const response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.length > 0 && data[0].xml) {
+                        const definicao = cleanXmlDefinition(data[0].xml);
+                        document.getElementById('modal-word-definition').textContent = definicao;
+                        return;
+                    }
+                }
+                document.getElementById('modal-word-definition').textContent = "Significado não encontrado na base remota.";
+            } catch (e) {
+                document.getElementById('modal-word-definition').textContent = "Erro de rede ao carregar o significado online.";
+            }
         }
 
         function showWordDetails(word, definition) {
             document.getElementById('modal-word-title').textContent = word;
-            document.getElementById('modal-word-definition').textContent = definition || "Sem definição disponível para esta palavra.";
+            document.getElementById('modal-word-definition').textContent = definition;
             
             const modal = document.getElementById('definition-modal');
             modal.classList.remove('opacity-0', 'pointer-events-none');
@@ -621,9 +637,9 @@
         }
 
         function resetApp() {
-            circleLetters = "CORRIÇO";
-            document.getElementById('circle-letters-input').value = circleLetters;
-            document.getElementById('letter-count-badge').textContent = `${circleLetters.length} Letras`;
+            circleLetters = "";
+            document.getElementById('circle-letters-input').value = "";
+            document.getElementById('letter-count-badge').textContent = `0 Letras`;
             
             words = [
                 { id: "row-1", length: 4, pattern: ["", "", "", ""], suggestions: [], loading: false },
@@ -644,10 +660,11 @@
             
             renderBoard();
             drawWheel();
-            showToast("O tabuleiro foi completamente limpo e reiniciado.", "info");
+            switchTab('board');
+            showToast("Tabuleiro limpo!", "success");
         }
 
-        // --- CÓDIGO DA RODA DE CANVAS INTERATIVO ---
+        // --- CANVAS DA RODA INTERATIVA ---
         function setupCanvas() {
             canvas.addEventListener('mousedown', startDrawing);
             canvas.addEventListener('mousemove', drawAction);
@@ -678,9 +695,7 @@
             }, { passive: false });
 
             window.addEventListener('touchend', (e) => {
-                if (isDrawing) {
-                    endDrawing();
-                }
+                if (isDrawing) endDrawing();
             });
         }
 
@@ -731,18 +746,20 @@
             
             if (selectedIndices.length > 0) {
                 const formedWord = selectedIndices.map(idx => circleLetters[idx]).join('');
+                
                 let applied = false;
                 for (let word of words) {
                     if (word.length === formedWord.length) {
                         word.pattern = formedWord.split('');
                         renderBoard();
-                        showToast(`Palavra "${formedWord}" aplicada à grelha!`, "success");
+                        showToast(`Palavra "${formedWord}" aplicada ao tabuleiro!`, "success");
                         applied = true;
+                        switchTab('board');
                         break;
                     }
                 }
                 if (!applied) {
-                    showToast(`Palavra desenhada: ${formedWord}`, "info");
+                    showToast(`Palavra selecionada: ${formedWord}`, "info");
                 }
             }
             
@@ -783,6 +800,17 @@
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             const radius = 80; 
+
+            if (!circleLetters || circleLetters.length === 0) {
+                ctx.fillStyle = '#64748b';
+                ctx.font = 'bold 13px "Plus Jakarta Sans", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('Insira letras na aba', centerX, centerY - 15);
+                ctx.fillText('para ver a roda', centerX, centerY + 10);
+                return;
+            }
+
             const numLetters = circleLetters.length;
             
             letterPositions = [];
@@ -818,7 +846,6 @@
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 ctx.stroke();
-                
                 ctx.shadowBlur = 0; 
             }
 
