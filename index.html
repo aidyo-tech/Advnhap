@@ -52,12 +52,44 @@
     <div class="w-full max-w-3xl mx-auto px-4 pt-3 flex items-center justify-between gap-2">
         <div class="flex items-center gap-2 bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-1.5">
             <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Dicionário lexico.txt Ativo</span>
+            <span id="engine-status-badge" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Modo lexico.txt Ativo</span>
         </div>
-        <button onclick="resetApp()" class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-all text-slate-300">
-            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-            Reset Geral
-        </button>
+        <div class="flex items-center gap-2">
+            <button onclick="toggleSettings()" class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-all text-slate-300">
+                <i data-lucide="settings" class="w-3.5 h-3.5 text-indigo-400"></i>
+                Chave API
+            </button>
+            <button onclick="resetApp()" class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 transition-all text-slate-300">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                Reset
+            </button>
+        </div>
+    </div>
+
+    <div id="settings-panel" class="hidden w-full max-w-3xl mx-auto px-4 mt-3">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col gap-3 shadow-2xl relative">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                    <i data-lucide="key" class="w-3.5 h-3.5 text-indigo-400"></i>
+                    Configurar Alternativa: API Gemini
+                </span>
+                <button onclick="toggleSettings()" class="text-slate-500 hover:text-slate-300 p-1">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <p class="text-[10px] text-slate-400 leading-relaxed">
+                Opcional: Cole a sua chave do Gemini abaixo. Se definida, o jogo usará a IA em nuvem. Se deixada em branco, usará automaticamente o seu arquivo <strong>lexico.txt</strong> com consultas ao Dicionário Aberto.
+            </p>
+            <div class="relative flex items-center">
+                <input 
+                    type="password" 
+                    id="api-key-input" 
+                    placeholder="Deixe em branco para lexico.txt ou cole a API Key (AIzaSy...)" 
+                    oninput="saveApiKey(this.value)"
+                    class="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none"
+                />
+            </div>
+        </div>
     </div>
 
     <main class="flex-grow max-w-3xl w-full mx-auto p-4 flex flex-col gap-6">
@@ -172,7 +204,13 @@
         </div>
     </div>
 
+    <footer class="border-t border-slate-900 bg-slate-950 py-3 px-4 text-center text-[10px] text-slate-600">
+        Adivinho de Palavras Cruzadas &copy; 2026 • Motor Integrado (lexico.txt + Dicionário Aberto / Suporte Opcional a Gemini Key).
+    </footer>
+
     <script>
+        // Carrega a chave de API guardada localmente se existir
+        let apiKey = localStorage.getItem("gemini_api_key") || "";
         let activeTab = "board";
         let wheelVisible = true;
 
@@ -201,29 +239,58 @@
             renderBoard();
             setupCanvas();
             drawWheel();
-            await loadLexicon(); // Carrega as palavras do lexico.txt ao abrir a página
+            
+            // Define o valor inicial do input de API se houver chave salva
+            document.getElementById("api-key-input").value = apiKey;
+            updateStatusBadge();
+            
+            // Carrega o lexico.txt em segundo plano imediatamente
+            await loadLexicon();
         };
 
         // Função assíncrona para ler o ficheiro lexico.txt hospedado junto com o index.html
         async function loadLexicon() {
             try {
-                showToast("Carregando base de dados lexico.txt...", "info");
+                showToast("A carregar base de dados lexico.txt...", "info");
                 const response = await fetch('lexico.txt');
                 
                 if (!response.ok) throw new Error("Não foi possível encontrar o arquivo lexico.txt.");
                 
                 const text = await response.text();
                 
-                // Quebra o texto por linha, limpa espaços e ignora linhas em branco
                 globalWordsList = text.split('\n')
                     .map(w => w.trim().toUpperCase())
                     .filter(w => w.length > 1);
                     
-                showToast(`Sucesso! ${globalWordsList.length} palavras carregadas.`, "success");
+                showToast(`Sucesso! ${globalWordsList.length} palavras carregadas do lexico.txt.`, "success");
             } catch (error) {
                 console.error(error);
-                showToast("Aviso: lexico.txt não detectado. Certifique-se de colocá-lo no repositório.", "error");
+                showToast("Aviso: lexico.txt não detectado. Usando modo de IA puro.", "warning");
             }
+        }
+
+        // Salvar chave de API no LocalStorage
+        function saveApiKey(val) {
+            apiKey = val.trim();
+            localStorage.setItem("gemini_api_key", apiKey);
+            updateStatusBadge();
+        }
+
+        function updateStatusBadge() {
+            const badge = document.getElementById("engine-status-badge");
+            if (apiKey) {
+                badge.textContent = "Modo IA Gemini Conectado";
+                badge.className = "text-[10px] font-bold text-indigo-400 uppercase tracking-wider";
+            } else {
+                badge.textContent = "Modo lexico.txt Ativo";
+                badge.className = "text-[10px] font-bold text-emerald-400 uppercase tracking-wider";
+            }
+        }
+
+        // Alternar visualização da gaveta de configurações de API
+        function toggleSettings() {
+            const panel = document.getElementById("settings-panel");
+            panel.classList.toggle("hidden");
         }
 
         // Mostrar Notificação Toast
@@ -317,7 +384,7 @@
 
                 let suggestionsHtml = '';
                 if (word.loading) {
-                    suggestionsHtml = `<span class="text-2xs text-indigo-400/80 animate-pulse font-medium">Processando lexico.txt & API...</span>`;
+                    suggestionsHtml = `<span class="text-2xs text-indigo-400/80 animate-pulse font-medium">A decifrar dados...</span>`;
                 } else if (word.suggestions && word.suggestions.length > 0) {
                     suggestionsHtml = word.suggestions.map(s => {
                         const defSafe = s.definition.replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -339,6 +406,7 @@
                     <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                         <div class="flex items-center gap-1.5">
                             <span class="text-3xs font-extrabold text-slate-400 uppercase tracking-wide">Palavra #${wordIdx + 1}</span>
+                            
                             <div class="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
                                 <button onclick="changeWordLength('${word.id}', -1)" class="w-4 h-4 flex items-center justify-center text-3xs font-black hover:bg-slate-800 text-slate-400 rounded">-</button>
                                 <span class="text-3xs font-bold px-1.5 text-indigo-300">${word.length} letras</span>
@@ -440,7 +508,57 @@
             renderBoard();
         }
 
-        // Função utilitária para higienizar a tag <def> que vem dentro do XML da API
+        // Consumir API do Gemini (Se a chave for configurada)
+        async function fetchGemini(prompt, systemInstruction, retries = 5, delay = 1000) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            words: {
+                                type: "ARRAY",
+                                description: "Lista de palavras válidas encontradas",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        word: { type: "STRING", description: "A palavra em maiúsculas sem acentuação desnecessária (ex: PODIO em vez de PÓDIO)" },
+                                        definition: { type: "STRING", description: "Breve significado ou pista desta palavra em português de Portugal" }
+                                    },
+                                    required: ["word", "definition"]
+                                }
+                            }
+                        },
+                        required: ["words"]
+                    }
+                }
+            };
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP Erro: ${response.status}`);
+
+                    const data = await response.json();
+                    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    return JSON.parse(text || '{"words":[]}');
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));
+                }
+            }
+        }
+
+        // Higienizador de XML da API do Dicionário Aberto
         function cleanXmlDefinition(xmlTexto) {
             let definicao = "Significado não encontrado.";
             const matchDef = xmlTexto.match(/<def>([\s\S]*?)<\/def>/);
@@ -454,7 +572,7 @@
             return definicao.replace(/\s+/g, ' ').trim();
         }
 
-        // Decifrar palavras individuais consultando o lexico.txt e validando na API do Dicionário Aberto
+        // Decifrar palavras (Verifica se usa Chave API ou lexico.txt automático)
         async function solveWordWithIA(wordId) {
             const word = words.find(w => w.id === wordId);
             if (!word) return;
@@ -464,15 +582,39 @@
                 return;
             }
 
-            if (globalWordsList.length === 0) {
-                showToast("Aguarde a base de dados terminar de carregar.", "error");
-                return;
-            }
-
             word.loading = true;
             renderBoard();
 
-            // Filtra no banco de dados gigante respeitando o tamanho, quadradinhos e as letras da roda
+            // CAMINHO 1: SE HOUVER CHAVE API DO GEMINI CONFIGURADA
+            if (apiKey) {
+                const patternStr = word.pattern.map(char => char === '' ? '_' : char).join('');
+                const systemPrompt = `És o dicionário de inteligência artificial do jogo 'Word Connect Solver'.
+Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente:
+1. Usar APENAS as letras disponíveis na roda: "${circleLetters}". Não inventes letras extras.
+2. Ter exatamente ${word.length} letras de comprimento e encaixar perfeitamente no padrão: "${patternStr}" (onde '_' indica qualquer letra livre).`;
+
+                const userPrompt = `Dá-me palavras de tamanho ${word.length} que usem apenas as letras "${circleLetters}" para o padrão "${patternStr}".`;
+
+                try {
+                    const res = await fetchGemini(userPrompt, systemPrompt);
+                    word.suggestions = res.words || [];
+                    word.loading = false;
+                    renderBoard();
+                    return; // Encerra a execução usando a IA
+                } catch (err) {
+                    console.error("Falha na API Gemini Cloud, ativando lexico local de contingência...", err);
+                }
+            }
+
+            // CAMINHO 2: MODO AUTOMÁTICO VIA LEXICO.TXT + DICIONÁRIO ABERTO
+            if (globalWordsList.length === 0) {
+                showToast("A base de dados de palavras lexico.txt não foi localizada ou ainda está a carregar.", "error");
+                word.loading = false;
+                renderBoard();
+                return;
+            }
+
+            // Filtro matemático cirúrgico
             const possíveisPalavras = globalWordsList.filter(w => {
                 if (w.length !== word.length) return false;
                 
@@ -491,9 +633,7 @@
             });
 
             word.suggestions = [];
-
-            // Limita a busca a no máximo 15 sugestões simultâneas para não sobrecarregar a API na live
-            const limitadas = possíveisPalavras.slice(0, 15);
+            const limitadas = possíveisPalavras.slice(0, 15); // Limite de segurança para live
 
             for (const termo of limitadas) {
                 try {
@@ -509,8 +649,7 @@
                     }
                     word.suggestions.push({ word: termo, definition: definicao });
                 } catch (err) {
-                    console.error(err);
-                    word.suggestions.push({ word: termo, definition: "Erro ao conectar com o dicionário remoto." });
+                    word.suggestions.push({ word: termo, definition: "Erro de ligação ao buscar o significado remoto." });
                 }
             }
 
@@ -522,15 +661,10 @@
             renderBoard();
         }
 
-        // Descobrir todas as combinações totais (Anagramas) baseadas estritamente no lexico.txt
+        // Descobrir todas as combinações (Anagramas)
         async function calculateAllAnagrams() {
             if (!circleLetters || circleLetters.length < 3) {
                 showToast("Digite pelo menos 3 letras na aba 'Roda'.", "warning");
-                return;
-            }
-
-            if (globalWordsList.length === 0) {
-                showToast("O dicionário de palavras está indisponível ou carregando.", "error");
                 return;
             }
 
@@ -538,10 +672,33 @@
             container.innerHTML = `
                 <div class="flex flex-col items-center justify-center h-full py-8 text-indigo-400">
                     <i data-lucide="refresh-cw" class="w-6 h-6 animate-spin mb-1.5"></i>
-                    <p class="text-[10px] font-semibold">Analisando combinações no lexico.txt...</p>
+                    <p class="text-[10px] font-semibold">Processando combinações estruturadas...</p>
                 </div>
             `;
             lucide.createIcons();
+
+            // CAMINHO 1: SE HOUVER CHAVE API DO GEMINI CONFIGURADA
+            if (apiKey) {
+                const systemPrompt = `Encontra TODOS os anagramas e sub-palavras válidas em português (PT-PT) de 3 a 8 letras formadas EXCLUSIVAMENTE pelas letras fornecidas na roda: "${circleLetters}".`;
+                const userPrompt = `Encontra todas as combinações possíveis usando as letras: "${circleLetters}".`;
+
+                try {
+                    const res = await fetchGemini(userPrompt, systemPrompt);
+                    const wordsList = res.words || [];
+                    if (wordsList.length > 0) {
+                        renderAnagramsFromGemini(wordsList);
+                        return;
+                    }
+                } catch (err) {
+                    console.error("Erro na busca de Anagramas via Gemini, recorrendo ao lexico...", err);
+                }
+            }
+
+            // CAMINHO 2: MODO AUTOMÁTICO VIA LEXICO.TXT
+            if (globalWordsList.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">O ficheiro lexico.txt não foi carregado. Adicione-o ao repositório ou insira uma Gemini Key no topo.</div>`;
+                return;
+            }
 
             const arrayLetrasRoda = circleLetters.split('');
             const palavrasValidas = globalWordsList.filter(palavra => {
@@ -557,21 +714,20 @@
             });
 
             if (palavrasValidas.length === 0) {
-                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Nenhuma combinação encontrada na roda.</div>`;
+                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Nenhuma combinação gerada com essas letras.</div>`;
                 return;
             }
 
-            // Otimização para as abas: exibe de forma instantânea sem puxar definição em lote (evita travamentos)
-            const listaFinalResultados = palavrasValidas.map(termo => ({
+            const listaFinal = palavrasValidas.map(termo => ({
                 word: termo,
                 definition: "Clique para buscar o significado em tempo real."
             }));
 
-            renderAnagrams(listaFinalResultados);
+            renderAnagramsFromLexicon(listaFinal);
         }
 
-        // Renderiza os blocos de anagramas de forma veloz organizando por tamanho
-        function renderAnagrams(wordsList) {
+        // Renderizador para o lexico (Busca sob demanda ao clicar)
+        function renderAnagramsFromLexicon(wordsList) {
             const container = document.getElementById('anagrams-container');
             const grouped = {};
             wordsList.forEach(item => {
@@ -599,13 +755,46 @@
                 `;
                 container.appendChild(block);
             });
-
             showToast("Combinações listadas com sucesso!", "success");
         }
 
-        // Função complementar: Busca a definição sob demanda apenas quando clica no botão do Anagrama
+        // Renderizador para o Gemini (Já traz as definições no pacote de IA)
+        function renderAnagramsFromGemini(wordsList) {
+            const container = document.getElementById('anagrams-container');
+            const grouped = {};
+            wordsList.forEach(item => {
+                const len = item.word.length;
+                if (!grouped[len]) grouped[len] = [];
+                grouped[len].push(item);
+            });
+
+            container.innerHTML = '';
+            Object.keys(grouped).sort((a, b) => b - a).forEach(len => {
+                const block = document.createElement('div');
+                block.className = 'bg-slate-950/40 border border-slate-800/80 p-2.5 rounded-xl space-y-1.5';
+                block.innerHTML = `
+                    <div class="flex justify-between items-center border-b border-slate-800/60 pb-1">
+                        <span class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">${len} Letras</span>
+                        <span class="text-[8px] bg-indigo-950 text-indigo-300 px-1.5 py-0.5 rounded-md font-bold">${grouped[len].length}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1">
+                        ${grouped[len].map(item => {
+                            const defSafe = item.definition.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                            return `
+                            <button onclick="showWordDetails('${item.word}', '${defSafe}')" class="px-2 py-0.5 bg-slate-900 hover:bg-indigo-950 border border-slate-800 hover:border-indigo-800 text-slate-300 hover:text-white rounded text-[11px] font-medium transition-all">
+                                ${item.word}
+                            </button>
+                        `}).join('')}
+                    </div>
+                `;
+                container.appendChild(block);
+            });
+            showToast("Anagramas de IA listados com sucesso!", "success");
+        }
+
+        // Busca o verbete na API sob demanda (apenas ao clicar no botão do anagrama gerado pelo lexico)
         async function fetchSingleWordDefinition(termo) {
-            showWordDetails(termo, "Buscando verbete oficial no Dicionário Aberto...");
+            showWordDetails(termo, "A carregar significado oficial direto do Dicionário Aberto...");
             try {
                 const url = `https://api.dicionario-aberto.net/v2/word/${termo.toLowerCase()}`;
                 const response = await fetch(url);
@@ -617,9 +806,9 @@
                         return;
                     }
                 }
-                document.getElementById('modal-word-definition').textContent = "Significado não encontrado na base remota.";
+                document.getElementById('modal-word-definition').textContent = "Significado não encontrado no dicionário remoto.";
             } catch (e) {
-                document.getElementById('modal-word-definition').textContent = "Erro de rede ao carregar o significado online.";
+                document.getElementById('modal-word-definition').textContent = "Erro de rede ao carregar a definição em tempo real.";
             }
         }
 
@@ -699,21 +888,18 @@
             });
         }
 
+        // ... O resto da mecânica do Canvas é preservada sem alterações táteis ...
         function getMousePos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.clientX || e.pageX;
             const clientY = e.clientY || e.pageY;
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top
-            };
+            return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
         function startDrawing(e) {
             isDrawing = true;
             const pos = getMousePos(e);
             lastMousePos = pos;
-            
             const index = getLetterAtPos(pos);
             if (index !== -1) {
                 selectedIndices = [index];
@@ -726,7 +912,6 @@
             if (!isDrawing) return;
             const pos = getMousePos(e);
             lastMousePos = pos;
-
             const index = getLetterAtPos(pos);
             if (index !== -1) {
                 if (!selectedIndices.includes(index)) {
@@ -743,10 +928,8 @@
         function endDrawing() {
             if (!isDrawing) return;
             isDrawing = false;
-            
             if (selectedIndices.length > 0) {
                 const formedWord = selectedIndices.map(idx => circleLetters[idx]).join('');
-                
                 let applied = false;
                 for (let word of words) {
                     if (word.length === formedWord.length) {
@@ -762,7 +945,6 @@
                     showToast(`Palavra selecionada: ${formedWord}`, "info");
                 }
             }
-            
             selectedIndices = [];
             updateDrawnWordDisplay();
             drawWheel();
@@ -773,9 +955,7 @@
             for (let i = 0; i < letterPositions.length; i++) {
                 const lp = letterPositions[i];
                 const dist = Math.hypot(pos.x - lp.x, pos.y - lp.y);
-                if (dist < clickTolerance) {
-                    return i;
-                }
+                if (dist < clickTolerance) return i;
             }
             return -1;
         }
@@ -783,11 +963,10 @@
         function updateDrawnWordDisplay() {
             const wordContainer = document.getElementById('current-drawn-word-container');
             const wordText = document.getElementById('current-drawn-word');
-            
             if (selectedIndices.length > 0) {
                 const formedWord = selectedIndices.map(idx => circleLetters[idx]).join('');
                 wordText.textContent = formedWord;
-                wordContainer.classList.remove('opacity-0', 'scale-90');
+                wordContainer.removeGlow = wordContainer.classList.remove('opacity-0', 'scale-90');
             } else {
                 wordContainer.classList.add('opacity-0', 'scale-90');
             }
@@ -796,7 +975,6 @@
         function drawWheel() {
             if (!wheelVisible) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             const radius = 80; 
@@ -812,7 +990,6 @@
             }
 
             const numLetters = circleLetters.length;
-            
             letterPositions = [];
             for (let i = 0; i < numLetters; i++) {
                 const angle = (i * 2 * Math.PI / numLetters) - (Math.PI / 2);
@@ -851,7 +1028,6 @@
 
             letterPositions.forEach((pos, idx) => {
                 const isSelected = selectedIndices.includes(idx);
-                
                 if (isSelected) {
                     ctx.beginPath();
                     ctx.arc(pos.x, pos.y, 18, 0, 2 * Math.PI);
@@ -869,7 +1045,6 @@
                     ctx.fill();
                     ctx.stroke();
                 }
-
                 ctx.fillStyle = isSelected ? '#ffffff' : '#e2e8f0';
                 ctx.font = 'bold 15px "Plus Jakarta Sans", sans-serif';
                 ctx.textAlign = 'center';
