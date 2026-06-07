@@ -78,7 +78,7 @@
                 </button>
             </div>
             <p class="text-[10px] text-slate-400 leading-relaxed">
-                Opcional: Cole a sua chave do Gemini abaixo. Se definida, o jogo usará a IA em nuvem. Se deixada em branco, usará automaticamente o seu arquivo <strong>lexico.txt</strong> com consultas ao Dicionário Aberto.
+                Opcional: Cole a sua chave do Gemini abaixo. Se definida, o jogo usará a IA em nuvem. Se deixada em branco, usará automaticamente o seu arquivo <strong>lexico.txt</strong> com consultas tolerantes a acentuação e suporte ao Dicionário Aberto.
             </p>
             <div class="relative flex items-center">
                 <input 
@@ -205,7 +205,7 @@
     </div>
 
     <footer class="border-t border-slate-900 bg-slate-950 py-3 px-4 text-center text-[10px] text-slate-600">
-        Adivinho de Palavras Cruzadas &copy; 2026 • Motor Integrado (lexico.txt + Dicionário Aberto / Suporte Opcional a Gemini Key).
+        Adivinho de Palavras Cruzadas &copy; 2026 • Motor Híbrido (Suporte a lexico.txt Inteligente + API Dicionário Aberto / Gemini Cloud).
     </footer>
 
     <script>
@@ -248,6 +248,17 @@
             await loadLexicon();
         };
 
+        // Função de normalização inteligente para ignorar acentos mantendo apenas o 'Ç'
+        function normalizeText(str) {
+            if (!str) return "";
+            // Protege o 'Ç' antes de normalizar
+            let safeStr = str.toUpperCase().replace(/Ç/g, "___Ç___");
+            // Remove acentos e diacríticos (transforma Á, Ã, Â em A)
+            let normalized = safeStr.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            // Devolve o Ç para o seu lugar de direito
+            return normalized.replace(/___Ç___/g, "Ç");
+        }
+
         // Função assíncrona para ler o ficheiro lexico.txt hospedado junto com o index.html
         async function loadLexicon() {
             try {
@@ -265,7 +276,7 @@
                 showToast(`Sucesso! ${globalWordsList.length} palavras carregadas do lexico.txt.`, "success");
             } catch (error) {
                 console.error(error);
-                showToast("Aviso: lexico.txt não detectado. Usando modo de IA puro.", "warning");
+                showToast("Aviso: lexico.txt não detectado. Operando em modo IA puro.", "warning");
             }
         }
 
@@ -335,9 +346,10 @@
             }
         }
 
-        // Atualizar as Letras da Roda
+        // Atualizar as Letras da Roda com normalização imediata
         function updateCircleLetters(val) {
-            circleLetters = val.toUpperCase().replace(/[^A-ZÇ]/g, '');
+            let cleaned = val.toUpperCase().replace(/[^A-ZÇÃÕÁÉÍÓÚÀÂÊÔÛÜ]/g, '');
+            circleLetters = normalizeText(cleaned);
             document.getElementById('circle-letters-input').value = circleLetters;
             document.getElementById('letter-count-badge').textContent = `${circleLetters.length} Letras`;
             selectedIndices = [];
@@ -465,7 +477,8 @@
         function updateLetterPattern(wordId, index, value, inputEl) {
             const word = words.find(w => w.id === wordId);
             if (!word) return;
-            const char = value.toUpperCase().replace(/[^A-ZÇ]/g, '');
+            // Permite letras acentuadas no próprio tabuleiro caso o usuário digite
+            let char = value.toUpperCase().replace(/[^A-ZÇÃÕÁÉÍÓÚÀÂÊÔÛÜ]/g, '');
             word.pattern[index] = char;
             word.suggestions = [];
 
@@ -508,7 +521,7 @@
             renderBoard();
         }
 
-        // Consumir API do Gemini (Se a chave for configurada)
+        // Consumir API do Gemini
         async function fetchGemini(prompt, systemInstruction, retries = 5, delay = 1000) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             
@@ -526,7 +539,7 @@
                                 items: {
                                     type: "OBJECT",
                                     properties: {
-                                        word: { type: "STRING", description: "A palavra em maiúsculas sem acentuação desnecessária (ex: PODIO em vez de PÓDIO)" },
+                                        word: { type: "STRING", description: "A palavra em maiúsculas com acentuação ortográfica portuguesa correta (ex: NÃO, PÓDIO, PIÃO, ÔNIBUS)" },
                                         definition: { type: "STRING", description: "Breve significado ou pista desta palavra em português de Portugal" }
                                     },
                                     required: ["word", "definition"]
@@ -572,7 +585,7 @@
             return definicao.replace(/\s+/g, ' ').trim();
         }
 
-        // Decifrar palavras (Verifica se usa Chave API ou lexico.txt automático)
+        // Decifrar palavras individuais (Verifica se usa Chave API do Gemini ou lexico.txt automático)
         async function solveWordWithIA(wordId) {
             const word = words.find(w => w.id === wordId);
             if (!word) return;
@@ -585,46 +598,59 @@
             word.loading = true;
             renderBoard();
 
+            // Normaliza o padrão do tabuleiro para a comparação
+            const patternStr = word.pattern.map(char => char === '' ? '_' : normalizeText(char)).join('');
+            const normCircle = normalizeText(circleLetters);
+
             // CAMINHO 1: SE HOUVER CHAVE API DO GEMINI CONFIGURADA
             if (apiKey) {
-                const patternStr = word.pattern.map(char => char === '' ? '_' : char).join('');
+                // Forçamos explicitamente o modelo em nuvem a tolerar e recolocar acentos gráficos nas vogais básicas fornecidas
                 const systemPrompt = `És o dicionário de inteligência artificial do jogo 'Word Connect Solver'.
-Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente:
-1. Usar APENAS as letras disponíveis na roda: "${circleLetters}". Não inventes letras extras.
-2. Ter exatamente ${word.length} letras de comprimento e encaixar perfeitamente no padrão: "${patternStr}" (onde '_' indica qualquer letra livre).`;
+Encontra palavras reais na língua portuguesa (PT-PT / PT-BR) que respeitem estritamente:
+1. Podes adicionar acentuação gráfica portuguesa (como ã, á, â, ê, í, ó, ô, õ, ú) livremente para formar palavras ortograficamente legítimas. Por exemplo, se a roda de letras limpas tiver 'N, A, O', deves sugerir 'NÃO'. Se tiver 'P, I, A, O', deves listar 'PIÃO'.
+2. As consoantes e vogais básicas (sem acento) da palavra encontrada devem equivaler exatamente à roda de letras sem acentos: "${normCircle}".
+3. Ter exatamente ${word.length} letras de comprimento e encaixar perfeitamente no padrão: "${patternStr}" (onde '_' indica qualquer letra livre, mas deves tolerar acentos na hora do casamento de padrões).`;
 
-                const userPrompt = `Dá-me palavras de tamanho ${word.length} que usem apenas as letras "${circleLetters}" para o padrão "${patternStr}".`;
+                const userPrompt = `Dá-me palavras acentuadas de tamanho ${word.length} que usem as letras básicas da roda "${normCircle}" para o padrão "${patternStr}". Retorne-as sempre com a ortografia acentuada oficial.`;
 
                 try {
                     const res = await fetchGemini(userPrompt, systemPrompt);
                     word.suggestions = res.words || [];
                     word.loading = false;
                     renderBoard();
-                    return; // Encerra a execução usando a IA
+                    return; // Encerra usando a IA com sucesso
                 } catch (err) {
-                    console.error("Falha na API Gemini Cloud, ativando lexico local de contingência...", err);
+                    console.error("Falha na API Gemini Cloud, ativando lexico local com normalização...", err);
                 }
             }
 
-            // CAMINHO 2: MODO AUTOMÁTICO VIA LEXICO.TXT + DICIONÁRIO ABERTO
+            // CAMINHO 2: MODO AUTOMÁTICO VIA LEXICO.TXT + DICIONÁRIO ABERTO (Com tratamento total de acentos)
             if (globalWordsList.length === 0) {
-                showToast("A base de dados de palavras lexico.txt não foi localizada ou ainda está a carregar.", "error");
+                showToast("O arquivo lexico.txt ainda está carregando ou não foi adicionado ao GitHub.", "error");
                 word.loading = false;
                 renderBoard();
                 return;
             }
 
-            // Filtro matemático cirúrgico
+            // Algoritmo matemático tolerante a diacríticos
             const possíveisPalavras = globalWordsList.filter(w => {
                 if (w.length !== word.length) return false;
                 
+                // Normaliza a palavra do lexico para ignorar acentos na comparação física
+                let normW = normalizeText(w);
+                
+                // 1. Verifica se bate com as lacunas conhecidas do tabuleiro
                 for (let i = 0; i < word.length; i++) {
-                    if (word.pattern[i] && w[i] !== word.pattern[i]) return false;
+                    if (word.pattern[i]) {
+                        let normPatternChar = normalizeText(word.pattern[i]);
+                        if (normW[i] !== normPatternChar) return false;
+                    }
                 }
 
-                let letrasDisponiveis = circleLetters.split('');
+                // 2. Verifica se a palavra pode ser formada puramente usando a roda desacentuada
+                let letrasDisponiveis = normCircle.split('');
                 for (let i = 0; i < w.length; i++) {
-                    const letra = w[i];
+                    const letra = normW[i];
                     const index = letrasDisponiveis.indexOf(letra);
                     if (index === -1) return false; 
                     letrasDisponiveis.splice(index, 1);
@@ -633,10 +659,11 @@ Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente
             });
 
             word.suggestions = [];
-            const limitadas = possíveisPalavras.slice(0, 15); // Limite de segurança para live
+            const limitadas = possíveisPalavras.slice(0, 15); // Limite anti-travamento para stream
 
             for (const termo of limitadas) {
                 try {
+                    // Mantém a palavra acentuada original para buscar na API remota
                     const url = `https://api.dicionario-aberto.net/v2/word/${termo.toLowerCase()}`;
                     const response = await fetch(url);
                     let definicao = "Definição não localizada na API online.";
@@ -647,6 +674,7 @@ Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente
                             definicao = cleanXmlDefinition(data[0].xml);
                         }
                     }
+                    // Exibe a palavra 'termo' original com o acento correto intacto!
                     word.suggestions.push({ word: termo, definition: definicao });
                 } catch (err) {
                     word.suggestions.push({ word: termo, definition: "Erro de ligação ao buscar o significado remoto." });
@@ -661,7 +689,7 @@ Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente
             renderBoard();
         }
 
-        // Descobrir todas as combinações (Anagramas)
+        // Descobrir todas as combinações totais (Anagramas acentuados)
         async function calculateAllAnagrams() {
             if (!circleLetters || circleLetters.length < 3) {
                 showToast("Digite pelo menos 3 letras na aba 'Roda'.", "warning");
@@ -677,10 +705,13 @@ Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente
             `;
             lucide.createIcons();
 
+            const normCircle = normalizeText(circleLetters);
+
             // CAMINHO 1: SE HOUVER CHAVE API DO GEMINI CONFIGURADA
             if (apiKey) {
-                const systemPrompt = `Encontra TODOS os anagramas e sub-palavras válidas em português (PT-PT) de 3 a 8 letras formadas EXCLUSIVAMENTE pelas letras fornecidas na roda: "${circleLetters}".`;
-                const userPrompt = `Encontra todas as combinações possíveis usando as letras: "${circleLetters}".`;
+                const systemPrompt = `Encontra TODOS os anagramas e sub-palavras legítimas em português de 3 a 8 letras formadas EXCLUSIVAMENTE pelas letras fornecidas na roda: "${normCircle}".
+Instrução Crucial: Deves adicionar acentuação gráfica portuguesa (ã, á, â, ê, í, ó, ô, õ, ú) livremente nas vogais básicas para gerar palavras ortograficamente corretas (ex: listar 'NÃO', 'PIÃO', 'PÓDIO').`;
+                const userPrompt = `Encontra todas as combinações acentuadas possíveis para a roda desacentuada: "${normCircle}".`;
 
                 try {
                     const res = await fetchGemini(userPrompt, systemPrompt);
@@ -694,18 +725,21 @@ Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente
                 }
             }
 
-            // CAMINHO 2: MODO AUTOMÁTICO VIA LEXICO.TXT
+            // CAMINHO 2: MODO AUTOMÁTICO VIA LEXICO.TXT GIGANTE (Com suporte a acentos)
             if (globalWordsList.length === 0) {
-                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">O ficheiro lexico.txt não foi carregado. Adicione-o ao repositório ou insira uma Gemini Key no topo.</div>`;
+                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">O arquivo lexico.txt não foi carregado. Certifique-se de adicioná-lo à raiz do repositório no GitHub.</div>`;
                 return;
             }
 
-            const arrayLetrasRoda = circleLetters.split('');
+            const arrayLetrasRoda = normCircle.split('');
             const palavrasValidas = globalWordsList.filter(palavra => {
                 if (palavra.length < 3 || palavra.length > arrayLetrasRoda.length) return false;
                 
+                // Normaliza o verbete para bater contra a roda sem diacríticos
+                let normPalavra = normalizeText(palavra);
+                
                 let letrasDisponiveis = [...arrayLetrasRoda];
-                for (let letra of palavra) {
+                for (let letra of normPalavra) {
                     const index = letrasDisponiveis.indexOf(letra);
                     if (index === -1) return false;
                     letrasDisponiveis.splice(index, 1);
@@ -714,10 +748,11 @@ Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente
             });
 
             if (palavrasValidas.length === 0) {
-                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Nenhuma combinação gerada com essas letras.</div>`;
+                container.innerHTML = `<div class="text-center py-6 text-xs text-slate-500">Nenhuma combinação gerada com essas letras no lexico.txt.</div>`;
                 return;
             }
 
+            // Mapeia mantendo a grafia acentuada original para exibição
             const listaFinal = palavrasValidas.map(termo => ({
                 word: termo,
                 definition: "Clique para buscar o significado em tempo real."
@@ -758,7 +793,7 @@ Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente
             showToast("Combinações listadas com sucesso!", "success");
         }
 
-        // Renderizador para o Gemini (Já traz as definições no pacote de IA)
+        // Renderizador para o Gemini (Já traz as definições acentuadas de IA)
         function renderAnagramsFromGemini(wordsList) {
             const container = document.getElementById('anagrams-container');
             const grouped = {};
@@ -792,7 +827,7 @@ Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente
             showToast("Anagramas de IA listados com sucesso!", "success");
         }
 
-        // Busca o verbete na API sob demanda (apenas ao clicar no botão do anagrama gerado pelo lexico)
+        // Busca o verbete na API sob demanda preservando acentuações originais gráficas
         async function fetchSingleWordDefinition(termo) {
             showWordDetails(termo, "A carregar significado oficial direto do Dicionário Aberto...");
             try {
@@ -842,11 +877,7 @@ Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente
                 <div class="flex flex-col items-center justify-center h-full text-center p-5 bg-slate-950/30 border border-dashed border-slate-800/80 rounded-2xl text-slate-500">
                     <i data-lucide="help-circle" class="w-7 h-7 mb-1.5 text-slate-700"></i>
                     <p class="text-[11px] leading-relaxed max-w-[200px]">
-                        Clique em "Decifrar Tudo" para descobrir todas as combinações que podem ser geradas.
-                    </p>
-                </div>
-            `;
-            
+                        Clique em "Decifrar Tudo" para descobrir todas as </p></div>`;
             renderBoard();
             drawWheel();
             switchTab('board');
@@ -888,7 +919,6 @@ Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente
             });
         }
 
-        // ... O resto da mecânica do Canvas é preservada sem alterações táteis ...
         function getMousePos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.clientX || e.pageX;
@@ -908,6 +938,7 @@ Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente
             drawWheel();
         }
 
+        // No canvas, capturamos as letras normalizadas limpas geradas para os caminhos físicos
         function drawAction(e) {
             if (!isDrawing) return;
             const pos = getMousePos(e);
@@ -966,7 +997,7 @@ Encontra palavras reais na língua portuguesa (PT-PT) que respeitem estritamente
             if (selectedIndices.length > 0) {
                 const formedWord = selectedIndices.map(idx => circleLetters[idx]).join('');
                 wordText.textContent = formedWord;
-                wordContainer.removeGlow = wordContainer.classList.remove('opacity-0', 'scale-90');
+                wordContainer.classList.remove('opacity-0', 'scale-90');
             } else {
                 wordContainer.classList.add('opacity-0', 'scale-90');
             }
